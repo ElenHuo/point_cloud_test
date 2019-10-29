@@ -7,6 +7,8 @@
 #include<vector>
 #include<list>
 #include<string>
+#include<cmath> //四舍五入函数库 round（x）
+
 #include "tf_listerner.h"
 #include "nav_msgs/OccupancyGrid.h"
 #include "nav_msgs/Path.h"
@@ -75,7 +77,7 @@ private:
     nav_msgs::Path global_path;
     ///////////////////test///////
     sensor_msgs::PointCloud PC_TEST;
-    //////////////////teste////////
+    //////////////////test////////
 
     ros::NodeHandle n;
     ros::Subscriber sub_costmap;
@@ -94,6 +96,9 @@ private:
     void Astar_Search_Algorithm();  
     void Path_Smooth();
     int Line_Obstacle_Check(Node A ,Node B);
+
+    void Pts_Generation(Node A ,Node B);
+
     int minInOpenList();
     int CheckPath();    
     

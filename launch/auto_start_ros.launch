@@ -1,0 +1,23 @@
+<launch>
+    <!--include file="$(find agv_driver)/launch/agv_driver.launch"/-->
+
+    <!--node name="lidar_optic_angle" pkg="agv_driver" type="lidar_optic_angle"/-->
+
+    <!--include file="$(find agv_driver)/launch/navigation.launch"/-->
+
+    <!--node name="rviz" pkg="rviz" type="rviz" args="-d $(find agv_driver)/slam_rviz.rviz"/-->
+
+    <!--node name="startup_script" pkg="agv_driver" type="startup_script"/-->
+
+    <!--include file="$(find agv_driver)/launch/send_urdf.launch"/-->
+
+    <!--node name="camera_location" pkg="agv_driver" type="camera_location"/-->
+
+    <node name="rviz" pkg="rviz" type="rviz" output="screen"/>
+
+    <node name="obstacle_points" pkg="point_cloud_test" type="obstacle_points"/>
+
+    <node name="object_tracking" pkg="point_cloud_test" type="object_tracking"/>
+
+    <node name="own_cost_map" pkg="point_cloud_test" type="own_cost_map" output="screen"/>
+</launch>

@@ -7,8 +7,8 @@ Astar::Astar()
     geometry_msgs::Pose goal_test;
     sub_goalCB(goal_test);
     ////////////////////////////////////////////////////////////test///////////////
-    sub_costmap = n.subscribe("/own_cost_map", 1 ,&Astar::sub_costmapCB,this);
-    //sub_costmap = n.subscribe("/map", 1 ,&Astar::sub_costmapCB,this);////////////////////////////////////////////////test
+    //sub_costmap = n.subscribe("/own_cost_map", 1 ,&Astar::sub_costmapCB,this);
+    sub_costmap = n.subscribe("/map", 1 ,&Astar::sub_costmapCB,this);////////////////////////////////////////////////test
     sub_goal = n.subscribe("/own_destination", 1 ,&Astar::sub_goalCB,this);
     pub_path = n.advertise<nav_msgs::Path>("/own_path",1);
 
@@ -55,8 +55,8 @@ void Astar::sub_costmapCB(nav_msgs::OccupancyGrid costmap)
     double car_pos_y = car_in_map_->y() - map_.info.origin.position.y;
 
     //////////////////test///////////
-    // car_pos_x = 1 - map_.info.origin.position.x;
-    // car_pos_y = -1 - map_.info.origin.position.y;
+     car_pos_x = -6 - map_.info.origin.position.x;
+     car_pos_y = -10 - map_.info.origin.position.y;
     //////////////////teste///////////
     car_pos.num = ( (int)( car_pos_y / map_.info.resolution) * map_.info.width + car_pos_x / map_.info.resolution);
 
@@ -85,8 +85,8 @@ void Astar::sub_goalCB(geometry_msgs::Pose goal)
 {
     goal_ = goal;
     ///////////////////////////////////////////////////////////////////test
-    goal_.position.x = 1.5;
-    goal_.position.y = 0;
+    goal_.position.x = 2;
+    goal_.position.y = 1;
     ///////////////////////////////////////////////////////////////////test
     goal_flag = 1;
 
@@ -677,18 +677,33 @@ void Astar::Astar_Search_Algorithm()
         }
 
         Path_Smooth();
-       
-        for(int i = 0;i<temp_path.size();i++)
+        cout << "size:"<< temp_path.size()<< ","<< path.size() <<endl;
+        // for(int i = 0;i < temp_path.size();i++)
+        // {
+        //     position.pose.position.x = temp_path[i].x * map_.info.resolution + map_.info.origin.position.x;
+        //     position.pose.position.y = temp_path[i].y * map_.info.resolution + map_.info.origin.position.y;
+        //     global_path.poses.push_back(position);
+        // }
+        // pub_path.publish(global_path);
+
+        /* 清除路径path */
+        path.clear();
+        for (int i = 0 ; i <temp_path.size()-1; i++)
         {
-            position.pose.position.x = temp_path[i].x * map_.info.resolution + map_.info.origin.position.x;
-            position.pose.position.y = temp_path[i].y * map_.info.resolution + map_.info.origin.position.y;
+            Pts_Generation(temp_path[i],temp_path[i+1]);
+        }
+        for(int i = 0;i < path.size();i++)
+        {
+            position.pose.position.x = path[i].x * map_.info.resolution + map_.info.origin.position.x;
+            position.pose.position.y = path[i].y * map_.info.resolution + map_.info.origin.position.y;
             global_path.poses.push_back(position);
         }
         pub_path.publish(global_path);
 
         // int count=0;
         // int count_a = 0;
-        // 
+        // double last_x ,last_y;
+        // last_x = 0, last_y = 0;
         // for(int i = 0;i<path.size();i++)
         // {
         //     path[i].path_x = path[i].x * map_.info.resolution + map_.info.origin.position.x;
@@ -699,11 +714,16 @@ void Astar::Astar_Search_Algorithm()
         //     count++;
         //     position.pose.position.x = path[i].path_x;
         //     position.pose.position.y = path[i].path_y;
-        //     //if( count % 5 == 0)
+
+        //     if( count % 5 == 0)
         //     {
         //         global_path.poses.push_back(position);
-        //         //cout<<"X,Y:"<<path[i].path_x<<","<<path[i].path_y<<endl;
         //         count_a++;
+        //         double dis_det = sqrt ( (position.pose.position.x - last_x)*(position.pose.position.x - last_x) 
+        //         + (position.pose.position.y - last_y)*(position.pose.position.y - last_y) );
+        //         cout<<"dis betweent 2 pts:"<< dis_det<<endl;
+        //         last_x = path[i].path_x;
+        //         last_y = path[i].path_y;
         //     }            
         // }
         // pub_path.publish(global_path);
@@ -743,8 +763,8 @@ int Astar::Line_Obstacle_Check(Node A ,Node B)
     }
     else    
     {
-        double K =  (A.y - B.y) / (A.x - B.x);
-        double b =  (A.y - K * A.x);
+        double K =  (float)(A.y - B.y) / (float)(A.x - B.x);
+        double b =  A.y - K * A.x;
         int check_y;
         int Start_num_x,End_num_x ,Start_num_y,End_num_y;
         if(B.x > A.x)    //对x
@@ -757,73 +777,143 @@ int Astar::Line_Obstacle_Check(Node A ,Node B)
             Start_num_x = B.x;
             End_num_x = A.x;
         }
-        else if(A.y < B.y) 
-        {
-            Start_num_y = A.y;
-            End_num_y = B.y;
-        }
-        else if(A.y > B.y) 
-        {
-            Start_num_y = B.y;
-            End_num_y = A.y;
-        }
         for (int i = Start_num_x + 1; i < End_num_x ; i++ )
         {
             check_y = K * i  + b ;
+      
             if( ( node[(check_y * width + i)].state == -1) || 
                 ( node[(check_y * width + i)].state > 30 ) )//num 有障碍物或者未知区域
                 {
                     return 1 ;
                 }
+             
         }  
-        for (int i = Start_num_y+1; i < End_num_y ; i++ ) //对Y
+        if(K != 0)
         {
-            check_y =  (i - b) /K ;
-            if( ( node[(i * width + check_y)].state == -1) || 
-                ( node[(i * width + check_y)].state > 30 ) )//num 有障碍物或者未知区域
-                {
-                    return 1 ;
-                }
+            if(A.y < B.y) 
+            {
+                Start_num_y = A.y;
+                End_num_y = B.y;
+            }
+            else if(A.y > B.y) 
+            {
+                Start_num_y = B.y;
+                End_num_y = A.y;
+            }
+            for (int i = Start_num_y+1; i < End_num_y ; i++ ) //对Y
+            {
+                check_y =  (i - b) /K; //K ! = 0
+                if( ( node[(i * width + check_y)].state == -1) || 
+                    ( node[(i * width + check_y)].state > 30 ) )//num 有障碍物或者未知区域
+                    {
+                        return 1 ;
+                    }
+                    
+            }
         }
-            
-        
-
     }
-
+    
     return 0 ;
     
 }
 
+void Astar::Pts_Generation(Node A ,Node B)
+{
+    double ptr_dis = 0.15 ; //点之间间隔0.15米
+    int t;
+    if(A.x == B.x)  //K=infinite  Y方向插值
+    {
+        int num = abs(A.y - B.y)  * map_.info.resolution / ptr_dis;
+        if(B.y>A.y)
+        {
+            for (int i =1; i <=num ; i++)
+            {
+                t = A.y + (B.y-A.y) /num  * i ; 
+                path.push_back(node[ (t * width + A.x) ]);
+            }
+        }
+        else
+        {
+            for (int i =1; i <=num ; i++ )
+            {
+                t = A.y -  (A.y-B.y) / num  * i ; 
+                path.push_back(node[ (int)(t * width + A.x)]);
+            }
+        }
+    }
+    else    
+    {
+        double K =  (float)(A.y - B.y) / (float)(A.x - B.x);
+        double b =  (A.y - K * A.x);
+        int check_y;
+        if( abs(K)<1 )  //对X方向插值
+        {
+            int num = abs(A.x - B.x)  * map_.info.resolution / ptr_dis;
+            if(A.x > B.x)
+            for (int i = 1; i <=num ; i++)
+            {
+                t = A.x -  (A.x-B.x) / num  * i ; 
+                check_y = K * t  + b ;
+                path.push_back(node[ check_y * width + t ]);     
+            } 
+            else
+            for (int i = 1; i <=num ; i++)
+            {
+                t = A.x +  (B.x-A.x) / num  * i ;
+                check_y = K * t  + b ;
+                path.push_back(node[ check_y * width + t  ]);     
+            }  
+        }   
+        else  //Y方向插值
+        {
+            int num = abs(A.y - B.y)  * map_.info.resolution / ptr_dis;
+            if(A.y > B.y)
+            for (int i = 1; i <=num ; i++)
+            {
+                t = A.y - (A.y-B.y) /num  * i ; 
+                check_y = (t - b) / K ;
+                path.push_back(node[ t * width + check_y ]);     
+            } 
+            else
+            for (int i = 1; i <=num ; i++ )
+            {
+                t = A.y + (B.y-A.y) /num  * i ; 
+                check_y = (t - b) / K ;
+                path.push_back(node[ t * width + check_y ]);     
+            }  
+        }        
+
+    }
+
+}
 void Astar::Path_Smooth()
 {
     //First 删除共线点
-    
-    for(int i = 0 ; i< temp_path.size(); i++)
+    for(int i = 0 ; i< temp_path.size()-2; i++)
     {   ///三点共线
-        if( (temp_path[i+1].x - temp_path[i].x) == (temp_path[i+2].x - temp_path[i+1].x) &&
-            (temp_path[i+1].y - temp_path[i].y) == (temp_path[i+2].y - temp_path[i+1].y)  )
+        if( (temp_path[i].x - temp_path[i+1].x) * (temp_path[i+1].y - temp_path[i+2].y) ==
+            (temp_path[i].y - temp_path[i+1].y) * (temp_path[i+1].x - temp_path[i+2].x)  )
             {
                 temp_path.erase(temp_path.begin() + i + 1 ,temp_path.begin() + i + 2);
                 i--;
             }
     }
-    ///处理拐点
-   
+    cout<< "first size :" <<temp_path.size()<<endl;
+    //处理拐点
     for(int i = 0 ; i < temp_path.size()-2;)
     {
         if(Line_Obstacle_Check(temp_path[i],temp_path[i+2]) == 0)
         {
             temp_path.erase( temp_path.begin() +i+1  ,temp_path.begin() + i + 2);
-            
         }
         else
         {
             i++;
-        
         }
     }
 
-    
+    cout << "temp of path size is : "<<temp_path.size()<<endl;
+
 }
 
 void Astar::Algorithm()
@@ -867,15 +957,25 @@ void Astar::Algorithm()
     PC_TEST.header.frame_id = "map";
     PC_TEST.points.clear();
     geometry_msgs::Point32 test_point;
-    for(int i = 0;i < node.size();i++)  //n convert to point[r,c]
+    // for(int i = 0;i < node.size();i++)  //n convert to point[r,c]
+    // {
+
+    //     if (node[i].visit ==1)
+    //     {
+    //         test_point.x = node[i].x * map_.info.resolution + map_.info.origin.position.x;
+    //         test_point.y = node[i].y * map_.info.resolution + map_.info.origin.position.y;
+    //         PC_TEST.points.push_back(test_point);
+    //     }
+
+    // }
+
+    for(int i = 0;i < path.size();i++)  //n convert to point[r,c]
     {
 
-        if (node[i].visit ==1)
-        {
-            test_point.x = node[i].x * map_.info.resolution + map_.info.origin.position.x;
-            test_point.y = node[i].y * map_.info.resolution + map_.info.origin.position.y;
+            test_point.x = path[i].x * map_.info.resolution + map_.info.origin.position.x;
+            test_point.y = path[i].y * map_.info.resolution + map_.info.origin.position.y;
             PC_TEST.points.push_back(test_point);
-        }
+        
 
     }
     PC_pub.publish(PC_TEST);

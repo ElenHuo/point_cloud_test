@@ -15,7 +15,7 @@ Obstacle_Tracking::Obstacle_Tracking()
     f = boost::bind(&Obstacle_Tracking::dynamicCb,this,_1,_2);
     server.setCallback(f);
     sub_laser_ = n_.subscribe("/scan", 2, &Obstacle_Tracking::laserCb,this);
-    pub_point_cloud_ = n_.advertise<sensor_msgs::PointCloud>("/object_point_cloud", 1000);
+    pub_point_cloud_ = n_.advertise<sensor_msgs::PointCloud>("/object_point_cloud", 1);
     ros::spin();
 }
 
@@ -35,10 +35,12 @@ void Obstacle_Tracking::laserCb(sensor_msgs::LaserScan msg)
     tf::Quaternion q1;
     tf::Matrix3x3 M1;
     sensor_msgs::PointCloud point_cloud;
-    point_cloud.header.frame_id = "laser";
+    //point_cloud.header.frame_id = "laser";
+    point_cloud.header.frame_id = "map";
     geometry_msgs::Point32 point1;
-    point1.x = 0;
-    point1.y = 0;
+    point1.x = tf_listerner1->x();
+    point1.y = tf_listerner1->y();
+    point1.z = tf_listerner1->z();
     point_cloud.points.push_back(point1);
     for(int i = 0;i < msg.ranges.size();i++)
     {
@@ -56,11 +58,18 @@ void Obstacle_Tracking::laserCb(sensor_msgs::LaserScan msg)
             int map_data_n = (int)(world_y / map_.info.resolution) * map_.info.width + world_x / map_.info.resolution;
             if((map_.data[map_data_n] == 0) && (distanceToObstacle(world_x,world_y) == 100))
             {
+                point1.x = world_x + map_.info.origin.position.x;
+                point1.y = world_y + map_.info.origin.position.y;
                 point_cloud.points.push_back(point1);
             }
         }
     }
     pub_point_cloud_.publish(point_cloud);
+
+    static double last_time = 0;
+    double now_time = ros::Time::now().toSec();
+    if(now_time - last_time < 0.1) ros::Duration(0.1 + last_time - now_time).sleep();
+    last_time = ros::Time::now().toSec();
 }
 
 void Obstacle_Tracking::mapCb(nav_msgs::OccupancyGrid map)

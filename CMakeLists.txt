@@ -213,6 +213,9 @@ target_link_libraries(object_tracking ${catkin_LIBRARIES})
 add_dependencies(object_tracking object_tracking_gencpp)
 
 
+add_executable(own_cost_map src/own_cost_map.cpp src/tf_listerner.cpp)
+target_link_libraries(own_cost_map ${catkin_LIBRARIES})
+add_dependencies(own_cost_map own_cost_map_gencpp)
 
 
 
