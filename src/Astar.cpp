@@ -7,8 +7,8 @@ Astar::Astar()
     geometry_msgs::Pose goal_test;
     sub_goalCB(goal_test);
     ////////////////////////////////////////////////////////////test///////////////
-    //sub_costmap = n.subscribe("/own_cost_map", 1 ,&Astar::sub_costmapCB,this);
-    sub_costmap = n.subscribe("/map", 1 ,&Astar::sub_costmapCB,this);////////////////////////////////////////////////test
+    sub_costmap = n.subscribe("/own_cost_map", 1 ,&Astar::sub_costmapCB,this);
+    //sub_costmap = n.subscribe("/map", 1 ,&Astar::sub_costmapCB,this);////////////////////////////////////////////////test
     sub_goal = n.subscribe("/own_destination", 1 ,&Astar::sub_goalCB,this);
     pub_path = n.advertise<nav_msgs::Path>("/own_path",1);
 
@@ -55,8 +55,8 @@ void Astar::sub_costmapCB(nav_msgs::OccupancyGrid costmap)
     double car_pos_y = car_in_map_->y() - map_.info.origin.position.y;
 
     //////////////////test///////////
-     car_pos_x = -6 - map_.info.origin.position.x;
-     car_pos_y = -10 - map_.info.origin.position.y;
+    // car_pos_x = 1 - map_.info.origin.position.x;
+    // car_pos_y = 1 - map_.info.origin.position.y;
     //////////////////teste///////////
     car_pos.num = ( (int)( car_pos_y / map_.info.resolution) * map_.info.width + car_pos_x / map_.info.resolution);
 
@@ -78,7 +78,7 @@ void Astar::sub_costmapCB(nav_msgs::OccupancyGrid costmap)
     load_map_flag_ = 1;
     Goal_Convert();// goal to world coordinate
     cout << "the time of load the map is:" << ros::Time::now().toSec() - t0 << endl;
-    Algorithm();
+    //Algorithm();
 }
 
 void Astar::sub_goalCB(geometry_msgs::Pose goal)
@@ -86,7 +86,7 @@ void Astar::sub_goalCB(geometry_msgs::Pose goal)
     goal_ = goal;
     ///////////////////////////////////////////////////////////////////test
     goal_.position.x = 2;
-    goal_.position.y = 1;
+    goal_.position.y = 3;
     ///////////////////////////////////////////////////////////////////test
     goal_flag = 1;
 
@@ -649,7 +649,7 @@ void Astar::Astar_Search_Algorithm()
         //goal is in the openlist
         if(node[goal.num].open_visit == 1)
         {
-            cout << "the A* searching time is:" << ros::Time::now().toSec() - t0 << endl;
+            
             break;
         }
 
@@ -677,17 +677,10 @@ void Astar::Astar_Search_Algorithm()
         }
 
         Path_Smooth();
-        cout << "size:"<< temp_path.size()<< ","<< path.size() <<endl;
-        // for(int i = 0;i < temp_path.size();i++)
-        // {
-        //     position.pose.position.x = temp_path[i].x * map_.info.resolution + map_.info.origin.position.x;
-        //     position.pose.position.y = temp_path[i].y * map_.info.resolution + map_.info.origin.position.y;
-        //     global_path.poses.push_back(position);
-        // }
-        // pub_path.publish(global_path);
 
         /* 清除路径path */
         path.clear();
+
         for (int i = 0 ; i <temp_path.size()-1; i++)
         {
             Pts_Generation(temp_path[i],temp_path[i+1]);
@@ -699,7 +692,7 @@ void Astar::Astar_Search_Algorithm()
             global_path.poses.push_back(position);
         }
         pub_path.publish(global_path);
-
+        path_flag = 1;
         // int count=0;
         // int count_a = 0;
         // double last_x ,last_y;
@@ -729,6 +722,7 @@ void Astar::Astar_Search_Algorithm()
         // pub_path.publish(global_path);
         // cout <<"Count::"<<count_a<<endl;
         cout<<"End_A*"<<endl;
+        cout << "the A* searching time is:" << ros::Time::now().toSec() - t0 << endl;
     }
 
 }
@@ -820,24 +814,26 @@ int Astar::Line_Obstacle_Check(Node A ,Node B)
 void Astar::Pts_Generation(Node A ,Node B)
 {
     double ptr_dis = 0.15 ; //点之间间隔0.15米
-    int t;
+    int num =round( sqrt ((A.x-B.x)*(A.x-B.x)+(A.y-B.y)*(A.y-B.y)) * map_.info.resolution / ptr_dis ); 
+    double t;
+    int check_y;
     if(A.x == B.x)  //K=infinite  Y方向插值
     {
-        int num = abs(A.y - B.y)  * map_.info.resolution / ptr_dis;
+ 
         if(B.y>A.y)
         {
             for (int i =1; i <=num ; i++)
             {
-                t = A.y + (B.y-A.y) /num  * i ; 
-                path.push_back(node[ (t * width + A.x) ]);
+                check_y = A.y + (double)(B.y-A.y) / (double)num  * i ; 
+                path.push_back(node[ (check_y * width + A.x) ]);
             }
         }
         else
         {
             for (int i =1; i <=num ; i++ )
             {
-                t = A.y -  (A.y-B.y) / num  * i ; 
-                path.push_back(node[ (int)(t * width + A.x)]);
+                check_y = A.y -  (double)(A.y-B.y) / (double)num  * i ; 
+                path.push_back(node[ (check_y * width + A.x)]);
             }
         }
     }
@@ -845,43 +841,23 @@ void Astar::Pts_Generation(Node A ,Node B)
     {
         double K =  (float)(A.y - B.y) / (float)(A.x - B.x);
         double b =  (A.y - K * A.x);
-        int check_y;
-        if( abs(K)<1 )  //对X方向插值
+        
+        if(A.x > B.x)
+        for (int i = 1; i <=num ; i++)
         {
-            int num = abs(A.x - B.x)  * map_.info.resolution / ptr_dis;
-            if(A.x > B.x)
-            for (int i = 1; i <=num ; i++)
-            {
-                t = A.x -  (A.x-B.x) / num  * i ; 
-                check_y = K * t  + b ;
-                path.push_back(node[ check_y * width + t ]);     
-            } 
-            else
-            for (int i = 1; i <=num ; i++)
-            {
-                t = A.x +  (B.x-A.x) / num  * i ;
-                check_y = K * t  + b ;
-                path.push_back(node[ check_y * width + t  ]);     
-            }  
-        }   
-        else  //Y方向插值
+            t = A.x -   (double)(A.x-B.x) /  (double)num  * i ; 
+            check_y = K * t  + b ;
+            path.push_back(node[  (check_y * width + t)]);     
+        } 
+        else
+        for (int i = 1; i <=num ; i++)
         {
-            int num = abs(A.y - B.y)  * map_.info.resolution / ptr_dis;
-            if(A.y > B.y)
-            for (int i = 1; i <=num ; i++)
-            {
-                t = A.y - (A.y-B.y) /num  * i ; 
-                check_y = (t - b) / K ;
-                path.push_back(node[ t * width + check_y ]);     
-            } 
-            else
-            for (int i = 1; i <=num ; i++ )
-            {
-                t = A.y + (B.y-A.y) /num  * i ; 
-                check_y = (t - b) / K ;
-                path.push_back(node[ t * width + check_y ]);     
-            }  
-        }        
+            t = A.x +   (double)(B.x-A.x) /  (double)num  * i ;
+            check_y = K * t  + b ;
+            path.push_back(node[ (check_y * width + t)  ]);     
+        }  
+
+                
 
     }
 
@@ -898,7 +874,6 @@ void Astar::Path_Smooth()
                 i--;
             }
     }
-    cout<< "first size :" <<temp_path.size()<<endl;
     //处理拐点
     for(int i = 0 ; i < temp_path.size()-2;)
     {
@@ -912,7 +887,6 @@ void Astar::Path_Smooth()
         }
     }
 
-    cout << "temp of path size is : "<<temp_path.size()<<endl;
 
 }
 
@@ -920,11 +894,12 @@ void Astar::Algorithm()
 {
     cout << "begin to plan path!!!!!!!!" << endl;
     
+    path_flag = 0;
+
     //start point
     car_pos.G = 0 ;
     car_pos.H = Manhattandistance(car_pos,goal);
     car_pos.F = car_pos.G + car_pos.H;
-    cout<<"CAR_POS___FFFF:"<<car_pos.F<<endl;
     car_pos.open_visit = 1;
 
     openlist.clear();
@@ -932,24 +907,7 @@ void Astar::Algorithm()
     global_path.poses.clear();
     openlist.push_back(&car_pos);
     global_path.header.frame_id = "map";
-    //判断起点终点间是否存在障碍物，若不存在，则路径数组只具有一个终点节点（带检查是否需要起点节点）。否则开启寻路算法
-    // if( obstacle_check_Start2Goal() == 0  )
-    // {
-    //     //无障碍物
-
-    //     geometry_msgs::PoseStamped position;
-
-    //     for(int i = 0;i<path.size();i++)
-    //     {
-    //         position.pose.position.x = path[i].x * map_.info.resolution + map_.info.origin.position.x;
-    //         position.pose.position.y = path[i].y * map_.info.resolution + map_.info.origin.position.y;
-    //         global_path.poses.push_back(position);
-    //     }
-    //     pub_path.publish(global_path);
-    // }
-
-    // // 开启寻路算法    
-    // else
+  
     {
         Astar_Search_Algorithm();
     }
@@ -957,17 +915,7 @@ void Astar::Algorithm()
     PC_TEST.header.frame_id = "map";
     PC_TEST.points.clear();
     geometry_msgs::Point32 test_point;
-    // for(int i = 0;i < node.size();i++)  //n convert to point[r,c]
-    // {
 
-    //     if (node[i].visit ==1)
-    //     {
-    //         test_point.x = node[i].x * map_.info.resolution + map_.info.origin.position.x;
-    //         test_point.y = node[i].y * map_.info.resolution + map_.info.origin.position.y;
-    //         PC_TEST.points.push_back(test_point);
-    //     }
-
-    // }
 
     for(int i = 0;i < path.size();i++)  //n convert to point[r,c]
     {
@@ -1018,7 +966,6 @@ int Astar::minInOpenList()
 
 int Astar::CheckPath()
 {
-    return 0;
     int ans = 1;
     double min_distance = 1000;
     int min_n = path.size() - 1;
@@ -1027,16 +974,20 @@ int Astar::CheckPath()
         double det_x = path[i].x - car_in_map_->x();
         double det_y = path[i].y - car_in_map_->y();
         double distance = sqrt(det_x * det_x + det_y * det_y);
-        min_distance = min_distance > distance ? distance:min_distance;
-        min_n = min_distance > distance ? i:min_n;
+        if(min_distance > distance)
+        {
+             min_n = i;
+             min_distance =   distance;
+        }
+       
     }
-    if(min_distance > 1)
+    if(min_distance > 1) //车子偏离路径1米，偏离太多
     {
         return 0;
     }
     if(min_n < path.size() - 1)
     {
-        path.erase(path.end() - min_n + 1,path.end());
+        path.erase(path.begin(),path.begin()+min_n);
     }
 
     for(int i = 0 ; i < path.size(); i++)
@@ -1074,15 +1025,15 @@ void Astar::ThreadRunOne()
     {
         if(load_map_flag_ == 1 && goal_flag == 1)
         {
-            //Algorithm();
+            Algorithm();
             goal_flag = 0;
 
         }
-        if(load_map_flag_ == 1 && CheckPath()==0 && goal_flag == 0 )
+        if(load_map_flag_ == 1 && path_flag ==1  && CheckPath()==0 && goal_flag == 0 )
         {
-            //Algorithm();
+            Algorithm();
         }
-        ros::Duration(1).sleep();
+        //ros::Duration(1).sleep();
     }
 }
 

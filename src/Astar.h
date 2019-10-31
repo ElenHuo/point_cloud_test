@@ -59,6 +59,7 @@ public:
 private:
     int load_map_flag_;
     int goal_flag;
+    int path_flag;
     int width;
     int height;
     Tf_Listerner* car_in_map_;

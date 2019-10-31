@@ -217,6 +217,10 @@ add_executable(own_cost_map src/own_cost_map.cpp src/tf_listerner.cpp)
 target_link_libraries(own_cost_map ${catkin_LIBRARIES})
 add_dependencies(own_cost_map own_cost_map_gencpp)
 
+add_executable(own_cost_map2 src/own_cost_map2.cpp src/tf_listerner.cpp)
+target_link_libraries(own_cost_map2 ${catkin_LIBRARIES})
+add_dependencies(own_cost_map2 own_cost_map2_gencpp)
+
 
 
 add_executable(Astar
