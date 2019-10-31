@@ -230,3 +230,13 @@ add_dependencies(Astar ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TAR
 target_link_libraries(Astar
   ${catkin_LIBRARIES}
 )
+
+
+add_executable(Commit_Goal
+  src/Commit_Goal.cpp
+)
+add_dependencies(Commit_Goal ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(Commit_Goal
+  ${catkin_LIBRARIES}
+)
+

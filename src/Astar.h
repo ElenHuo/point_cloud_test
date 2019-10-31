@@ -9,6 +9,7 @@
 #include<string>
 #include<cmath> //四舍五入函数库 round（x）
 
+#include "stdio.h"
 #include "tf_listerner.h"
 #include "nav_msgs/OccupancyGrid.h"
 #include "nav_msgs/Path.h"
@@ -59,7 +60,6 @@ public:
 private:
     int load_map_flag_;
     int goal_flag;
-    int path_flag;
     int width;
     int height;
     Tf_Listerner* car_in_map_;

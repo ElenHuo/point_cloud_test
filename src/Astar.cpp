@@ -3,18 +3,18 @@
 Astar::Astar()
 :load_map_flag_(0),goal_flag(0)
 {
+    car_in_map_ = new Tf_Listerner("map","base_footprint");
     ////////////////////////////////////////////////////////////test///////////////
-    geometry_msgs::Pose goal_test;
-    sub_goalCB(goal_test);
+    // geometry_msgs::Pose goal_test;
+    // sub_goalCB(goal_test);
     ////////////////////////////////////////////////////////////test///////////////
-    sub_costmap = n.subscribe("/own_cost_map", 1 ,&Astar::sub_costmapCB,this);
-    //sub_costmap = n.subscribe("/map", 1 ,&Astar::sub_costmapCB,this);////////////////////////////////////////////////test
+    //sub_costmap = n.subscribe("/own_cost_map", 1 ,&Astar::sub_costmapCB,this);
+    sub_costmap = n.subscribe("/map", 1 ,&Astar::sub_costmapCB,this);////////////////////////////////////////////////test
     sub_goal = n.subscribe("/own_destination", 1 ,&Astar::sub_goalCB,this);
     pub_path = n.advertise<nav_msgs::Path>("/own_path",1);
 
     PC_pub =  n.advertise<sensor_msgs::PointCloud>("/PC_test",1);
-
-    car_in_map_ = new Tf_Listerner("map","base_footprint");
+    
     PthreadOne();
 
     ros::spin();//monitor CB function
@@ -31,17 +31,6 @@ void Astar::sub_costmapCB(nav_msgs::OccupancyGrid costmap)
     map_ = costmap;
     width = map_.info.width;
     height = map_.info.height;
-    node.clear();
-    node.resize(costmap.data.size());
-
-    for(int i = 0;i < costmap.data.size();i++)  //n convert to point[r,c]
-    {
-        node[i].x =  i  % map_.info.width ; //in WORLD COORDINATE [R,C]
-        node[i].y =  i / map_.info.width ;
-        node[i].num = i;
-        node[i].state = costmap.data[i];
-
-    }
 
     tf::Quaternion q2;
     tf::Matrix3x3 M2;
@@ -55,8 +44,8 @@ void Astar::sub_costmapCB(nav_msgs::OccupancyGrid costmap)
     double car_pos_y = car_in_map_->y() - map_.info.origin.position.y;
 
     //////////////////test///////////
-    // car_pos_x = 1 - map_.info.origin.position.x;
-    // car_pos_y = 1 - map_.info.origin.position.y;
+    // car_pos_x = 3 - map_.info.origin.position.x;
+    // car_pos_y = 3 - map_.info.origin.position.y;
     //////////////////teste///////////
     car_pos.num = ( (int)( car_pos_y / map_.info.resolution) * map_.info.width + car_pos_x / map_.info.resolution);
 
@@ -64,7 +53,7 @@ void Astar::sub_costmapCB(nav_msgs::OccupancyGrid costmap)
     car_pos.x = car_pos.num % width;  //储存为行
     car_pos.y = car_pos.num / width;  //储存为列
 
-    cout<<"CAR_POS:"<<car_pos.x<<","<<car_pos.y<<" Num:"<<car_pos.num<<endl;
+    //cout<<"CAR_POS:"<<car_pos.x<<","<<car_pos.y<<" Num:"<<car_pos.num<<endl;
 
     for(int i = 0;i < node.size();i++)  //n convert to point[r,c]
     {
@@ -73,11 +62,11 @@ void Astar::sub_costmapCB(nav_msgs::OccupancyGrid costmap)
             car_pos.state =node[i].state;
         }
     }
-    cout << "Start_point.state:  "<<car_pos.state<<endl;
-    cout << "load the map successed" << endl;
+    //cout << "Start_point.state:  "<<car_pos.state<<endl;
+    //cout << "load the map successed" << endl;
     load_map_flag_ = 1;
     Goal_Convert();// goal to world coordinate
-    cout << "the time of load the map is:" << ros::Time::now().toSec() - t0 << endl;
+    //cout << "the time of load the map is:" << ros::Time::now().toSec() - t0 << endl;
     //Algorithm();
 }
 
@@ -85,8 +74,8 @@ void Astar::sub_goalCB(geometry_msgs::Pose goal)
 {
     goal_ = goal;
     ///////////////////////////////////////////////////////////////////test
-    goal_.position.x = 2;
-    goal_.position.y = 3;
+    // goal_.position.x = 2;
+    // goal_.position.y = 3;
     ///////////////////////////////////////////////////////////////////test
     goal_flag = 1;
 
@@ -120,7 +109,7 @@ void Astar::Goal_Convert()
         //goal [r,c] convert
         goal.x = goal.num % width;  //储存为行
         goal.y = goal.num / width;  //储存为列
-        cout<<"NUM:" << goal.num<<"   X,Y,STATE:"<< goal.x<<" "<<goal.y<<", "<<goal.state<< endl;
+        //cout<<"NUM:" << goal.num<<"   X,Y,STATE:"<< goal.x<<" "<<goal.y<<", "<<goal.state<< endl;
 
         if(goal.state != 0  ) //obstacle or unknow area
         {
@@ -132,7 +121,7 @@ void Astar::Goal_Convert()
 
 double Astar::Manhattandistance(Node A,Node B)
 {
-    return    (abs(A.x-B.x)+abs(A.y-B.y)); //Manhattan Dis
+    return  (abs(A.x-B.x)+abs(A.y-B.y)); //Manhattan Dis
     
 }
 double Astar::Linedistance (Node A, Node B)
@@ -655,9 +644,11 @@ void Astar::Astar_Search_Algorithm()
 
     }
     //get parent node and make path
-    if(node[goal.num].open_visit != 1) cout<<"Path is not found! Please check again!"<<endl;
+    if(node[goal.num].open_visit != 1) printf(" Path is not found! Please check again! \r\n");
     else if(node[goal.num].open_visit == 1)
     {
+        goal_flag = 0;
+        
         Node ptr = node[goal.num];
         path.push_back(node[goal.num]);
         while( ptr.num != car_pos.num)
@@ -692,7 +683,6 @@ void Astar::Astar_Search_Algorithm()
             global_path.poses.push_back(position);
         }
         pub_path.publish(global_path);
-        path_flag = 1;
         // int count=0;
         // int count_a = 0;
         // double last_x ,last_y;
@@ -721,8 +711,8 @@ void Astar::Astar_Search_Algorithm()
         // }
         // pub_path.publish(global_path);
         // cout <<"Count::"<<count_a<<endl;
-        cout<<"End_A*"<<endl;
-        cout << "the A* searching time is:" << ros::Time::now().toSec() - t0 << endl;
+        printf("        End_A*      \r\n   ");
+        printf("the A* searching time is: %f \r\n",  ros::Time::now().toSec() - t0 );
     }
 
 }
@@ -893,8 +883,18 @@ void Astar::Path_Smooth()
 void Astar::Algorithm()
 {
     cout << "begin to plan path!!!!!!!!" << endl;
-    
-    path_flag = 0;
+
+    /* 清除节点的所有属性  */
+    node.clear();
+    node.resize(map_.data.size());
+
+    for(int i = 0;i < map_.data.size();i++)  //n convert to point[r,c]
+    {
+        node[i].x =  i  % map_.info.width ; //in WORLD COORDINATE [R,C]
+        node[i].y =  i / map_.info.width ;
+        node[i].num = i;
+        node[i].state = map_.data[i];
+    }
 
     //start point
     car_pos.G = 0 ;
@@ -969,10 +969,10 @@ int Astar::CheckPath()
     int ans = 1;
     double min_distance = 1000;
     int min_n = path.size() - 1;
-    for(int i = 0 ; i<path.size();i++)
+    for(int i = 0 ; i < path.size();i++)
     {
-        double det_x = path[i].x - car_in_map_->x();
-        double det_y = path[i].y - car_in_map_->y();
+        double det_x = path[i].x * map_.info.resolution + map_.info.origin.position.x - car_in_map_->x();
+        double det_y = path[i].y * map_.info.resolution + map_.info.origin.position.x - car_in_map_->y();
         double distance = sqrt(det_x * det_x + det_y * det_y);
         if(min_distance > distance)
         {
@@ -981,7 +981,8 @@ int Astar::CheckPath()
         }
        
     }
-    if(min_distance > 1) //车子偏离路径1米，偏离太多
+
+    if(min_distance > 0.2) //车子偏离路径1米，偏离太多
     {
         return 0;
     }
@@ -992,9 +993,9 @@ int Astar::CheckPath()
 
     for(int i = 0 ; i < path.size(); i++)
     {
-        int x0 = (path[i].x - map_.info.origin.position.x) / map_.info.resolution;
-        int y0 = (path[i].y - map_.info.origin.position.y) / map_.info.resolution;
-        if(map_.data[y0 * map_.info.width + x0] > 30)
+        int x0 = path[i].x;
+        int y0 = path[i].y;
+        if(map_.data[y0 * map_.info.width + x0] > 45)
         {
             ans = 0;
         }
@@ -1006,7 +1007,7 @@ void Astar::PthreadOne()
 {
     if(pthread_create(&m_tid,NULL,ThreadOne,(void*)this) != 0)
     {
-        ROS_INFO("Start one thread failed!");
+        printf("Start one thread failed!\r\n");
         return;
     }
 }
@@ -1023,17 +1024,15 @@ void Astar::ThreadRunOne()
     //Algorithm();///////////////////////////////////////////////////////////////////////test
     while(ros::ok())
     {
+       // ros::Duration(1).sleep();
         if(load_map_flag_ == 1 && goal_flag == 1)
         {
             Algorithm();
-            goal_flag = 0;
-
         }
-        if(load_map_flag_ == 1 && path_flag ==1  && CheckPath()==0 && goal_flag == 0 )
+        if(load_map_flag_ == 1  && CheckPath()==0 && goal_flag == 0 )
         {
             Algorithm();
         }
-        //ros::Duration(1).sleep();
     }
 }
 
